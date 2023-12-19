@@ -46,57 +46,45 @@ def calculate_duration(bpm):
     beats_per_second = bpm / 60
     return 1 / beats_per_second
 
-def file_to_audio_v6(file_path, bpm):
+def file_to_audio_v6(file_path, bpm, chunk_size=1024):
     try:
-        # Read file as binary
+        # Open the file as binary
         with open(file_path, "rb") as file:
-            file_bytes = file.read()
+            # Initialize terminal buffer
+            rows, columns = get_terminal_size()
+            buffer = initialize_buffer(rows, columns)
+            spectrum_palette = ["\033[40m", "\033[44m", "\033[42m", "\033[46m", "\033[41m", "\033[45m", "\033[43m", "\033[47m"]
 
-        # Convert bytes to frequencies
-        frequencies = [byte_to_freq_v2(byte) for byte in file_bytes]
+            # Calculate duration for each tone
+            duration_per_tone = calculate_duration(bpm)
+            sample_rate = 16000  # Set sample rate to 16 kHz
 
-        # Calculate duration based on BPM
+            while True:
+                # Read a chunk of the file
+                file_bytes = file.read(chunk_size)
+                if not file_bytes:
+                    break  # Break if no more data
 
-        duration_per_tone = calculate_duration(bpm)
+                for byte in file_bytes:
+                    # Visualization and Buffer Update
+                    visualize_byte_spectrum_style(byte)
+                    update_buffer(buffer, byte, spectrum_palette, columns-1)
+                    display_buffer(buffer)
 
-        # Generate audio signal
-        sample_rate = 16000  # Set sample rate to 16 kHz
-        audio_signal = np.concatenate([
-            np.sin(2 * np.pi * freq * np.linspace(0, duration_per_tone, int(sample_rate * duration_per_tone))) if freq != 0 else np.zeros(int(sample_rate * duration_per_tone))
-            for freq in frequencies])
+                    # Convert byte to frequency and generate audio signal for this byte
+                    frequency = byte_to_freq_v2(byte)
+                    wave = generate_square_wave(frequency, duration_per_tone, sample_rate)
+                    wave = (wave * 255).astype(np.uint8)  # Normalize to 8-bit
 
-        # Normalize to 8-bit range (0-255)
-        audio_signal = (audio_signal - np.min(audio_signal)) / (np.max(audio_signal) - np.min(audio_signal))  # Normalize to 0-1 range
-        audio_signal = (audio_signal * 255).astype(np.uint8)  # Scale to 8-bit range and convert to unsigned 8-bit integer
-
-        # Initialize terminal buffer
-        rows, columns = get_terminal_size()
-        buffer = initialize_buffer(rows, columns)
-        spectrum_palette = ["\033[40m", "\033[44m", "\033[42m", "\033[46m", "\033[41m", "\033[45m", "\033[43m", "\033[47m"]
-
-        previous_byte = None
-        for byte in file_bytes:
-            visualize_byte_spectrum_style(byte)  # Visualize the byte
-
-            update_buffer(buffer, byte, spectrum_palette, columns-1)
-            display_buffer(buffer)
-
-            if byte != previous_byte:
-                frequency = byte_to_freq_v2(byte)
-                wave = generate_square_wave(frequency, duration_per_tone, sample_rate)
-                # Normalize and convert wave to 8-bit
-                wave = (wave - np.min(wave)) / (np.max(wave) - np.min(wave))  # Normalize to 0-1 range
-                wave = (wave * 255).astype(np.uint8)  # Scale to 8-bit range
-                previous_byte = byte
-
-            play_obj = sa.play_buffer(wave, 1, 2, sample_rate)
-            # Optionally wait for the sound to finish: 
-            play_obj.wait_done()
+                    # Play audio for this byte
+                    play_obj = sa.play_buffer(wave, 1, 2, sample_rate)
+                    play_obj.wait_done()
 
     except FileNotFoundError:
         print(f"File {file_path} not found.")
     except Exception as e:
         print(f"An error occurred: {e}")
+
 
 
 def generate_square_wave(frequency, duration, sample_rate):
@@ -126,10 +114,45 @@ def estimate_audio_duration_with_repeats(file_path, bpm):
 
 
 def format_duration(seconds):
-    # Convert seconds to minutes and seconds for display
-    minutes = int(seconds // 60)
-    seconds = int(seconds % 60)
-    return f"{minutes} minutes and {seconds} seconds"
+    # Constants for time unit conversions
+    MINUTE = 60
+    HOUR = 60 * MINUTE
+    DAY = 24 * HOUR
+    WEEK = 7 * DAY
+    MONTH = 30.44 * DAY  # Average month length
+    YEAR = 365.25 * DAY  # Average year length, accounting for leap years
+
+    years = int(seconds // YEAR)
+    seconds %= YEAR
+    months = int(seconds // MONTH)
+    seconds %= MONTH
+    weeks = int(seconds // WEEK)
+    seconds %= WEEK
+    days = int(seconds // DAY)
+    seconds %= DAY
+    hours = int(seconds // HOUR)
+    seconds %= HOUR
+    minutes = int(seconds // MINUTE)
+    seconds = int(seconds % MINUTE)
+
+    # Create a string to display the duration in a readable format
+    duration_str = ""
+    if years > 0:
+        duration_str += f"{years} years, "
+    if months > 0:
+        duration_str += f"{months} months, "
+    if weeks > 0:
+        duration_str += f"{weeks} weeks, "
+    if days > 0:
+        duration_str += f"{days} days, "
+    if hours > 0:
+        duration_str += f"{hours} hours, "
+    if minutes > 0:
+        duration_str += f"{minutes} minutes, "
+    duration_str += f"{seconds} seconds"
+
+    return duration_str
+
 
 
 def visualize_byte_spectrum_style(byte, width=80):
@@ -165,8 +188,8 @@ def visualize_byte_spectrum_style(byte, width=80):
 
 
 # Example usage with a BPM constant
-BPM = 100 # 133.7  # Beats per minute, adjust as needed
-BPM *= 10  # Fix speed up
+BPM = 132 #.7  # Beats per minute, adjust as needed
+BPM *= 4  # Fix speed up
 
 # Call file_to_audio_v3 with the file path and BPM
 if len(sys.argv) < 2:
