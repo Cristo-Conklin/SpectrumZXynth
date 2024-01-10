@@ -1,5 +1,7 @@
 ## SpectrumZXynth Project
 
+![AI Made Me Do It Album Cover](https://f4.bcbits.com/img/a0799865234_10.jpg)
+
 ### About the Program
 
 SpectrumZXynth is an innovative audio processing tool that transforms various forms of data into unique auditory experiences. It leverages the nostalgic 8-bit audio aesthetic, reminiscent of the ZX Spectrum era, to create distinctive soundscapes and compositions.
@@ -16,4 +18,4 @@ Listen to the album on Bandcamp: [AI Made Me Do It](https://aimademedoit.bandcam
 
 ---
 
-For more information about SpectrumZXynth, including how to use it and contribute to its development, see the code.
+For more information about SpectrumZXynth, including how to use it and contribute to its development, see the sections below.
